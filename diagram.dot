@@ -1,0 +1,325 @@
+digraph "Diagram" {
+  splines = "ortho";
+  pad = 1;
+  nodesep = 0.6;
+  ranksep = 0.75;
+  fontname = "Sans-Serif";
+  fontsize = 15;
+  dpi = 200;
+  rankdir = "BT";
+  compound = true;
+  fontcolor = "#222222";
+  edge [
+    color = "#D5871488";
+    penwidth = 2;
+    arrowhead = "dot";
+    arrowtail = "dot";
+  ];
+  node [
+    shape = "box";
+    style = "rounded";
+    fixedsize = true;
+    width = 1.7;
+    height = 1.7;
+    labelloc = "c";
+    imagescale = true;
+    fontname = "Sans-Serif";
+    fontsize = 8;
+    margin = 8;
+  ];
+  subgraph "App" {
+    subgraph "cluster-SubGraph.App" {
+      graph [
+        label = "App";
+        labelloc = "b";
+        labeljust = "l";
+        margin = 10;
+        fontsize = 16;
+        penwidth = 2;
+        pencolor = "#888888";
+        style = "filled,rounded";
+        fillcolor = "#f3f3f3";
+      ];
+      subgraph "cluster-SubGraph.SfltAuthStack" {
+        graph [
+          label = "SfltAuthStack";
+          labelloc = "b";
+          labeljust = "l";
+          margin = 10;
+          fontsize = 16;
+          penwidth = 2;
+          pencolor = "#888888";
+          style = "filled,rounded";
+          fillcolor = "#e4e4e4";
+        ];
+        "SfltAuthStack/GoogleOAuthSecret" [
+          label = " GoogleOAuthSecret";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_AWS-Secrets-Manager_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.466;
+        ];
+        "SfltAuthStack/UserPool" [
+          label = " UserPool";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_Amazon-Cognito_64.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.466;
+        ];
+        "SfltAuthStack/GoogleProvider" [
+          label = " GoogleProvider";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_Amazon-Cognito_64.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.466;
+        ];
+        "SfltAuthStack/UserPoolClient" [
+          label = " Cognito\nUserPoolClient\nUserPoolClient";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_Amazon-Cognito_64.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.898;
+        ];
+        "SfltAuthStack/IdentityPool" [
+          label = " Cognito IdentityPool\nIdentityPool";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_Amazon-Cognito_64.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.682;
+        ];
+        "SfltAuthStack/UserPoolDomain" [
+          label = " UserPoolDomain";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Security-Identity-Compliance/64/Arch_Amazon-Cognito_64.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.466;
+        ];
+      }
+      subgraph "cluster-SubGraph.SfltLambdaEdgeStackV4" {
+        graph [
+          label = "SfltLambdaEdgeStackV4";
+          labelloc = "b";
+          labeljust = "l";
+          margin = 10;
+          fontsize = 16;
+          penwidth = 2;
+          pencolor = "#888888";
+          style = "filled,rounded";
+          fillcolor = "#e4e4e4";
+        ];
+        "SfltLambdaEdgeStackV4/AuthLambda" [
+          label = " AuthLambda";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Compute/64/Arch_AWS-Lambda_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 2;
+          height = 2.266;
+        ];
+        "SfltLambdaEdgeStackV4/ExportsWriterapsoutheast2235C849A" [
+          label = "\nExportsWriterapsouthe";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Management-Governance/64/Arch_AWS-CloudFormation_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.682;
+        ];
+      }
+      subgraph "cluster-SubGraph.SfltStaticSiteStack" {
+        graph [
+          label = "SfltStaticSiteStack";
+          labelloc = "b";
+          labeljust = "l";
+          margin = 10;
+          fontsize = 16;
+          penwidth = 2;
+          pencolor = "#888888";
+          style = "filled,rounded";
+          fillcolor = "#e4e4e4";
+        ];
+        "SfltStaticSiteStack/WebsiteBucket" [
+          label = " WebsiteBucket";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Storage/64/Arch_Amazon-S3-Standard_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 2;
+          height = 2.266;
+        ];
+        "SfltStaticSiteStack/OAC" [
+          label = " CloudFront\nOriginAccessControl\nOAC";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Networking-Content/64/Arch_Amazon-CloudFront_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.898;
+        ];
+        "SfltStaticSiteStack/Distribution" [
+          label = " Distribution";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Networking-Content/64/Arch_Amazon-CloudFront_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 2;
+          height = 2.266;
+        ];
+        "SfltStaticSiteStack/Custom__CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C" [
+          label = " Custom \nCDKBucketDeployment86";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Compute/64/Arch_AWS-Lambda_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 2;
+          height = 2.4819999999999998;
+        ];
+        "SfltStaticSiteStack/ExportsReader" [
+          label = " ExportsReader";
+          fontsize = 12;
+          image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Management-Governance/64/Arch_AWS-CloudFormation_64@5x.png";
+          imagescale = "true";
+          imagepos = "tc";
+          penwidth = 0;
+          shape = "node";
+          fixedsize = "true";
+          labelloc = "b";
+          width = 1.2;
+          height = 1.466;
+        ];
+        subgraph "cluster-SubGraph.DeployWebsite" {
+          graph [
+            label = "DeployWebsite";
+            labelloc = "b";
+            labeljust = "l";
+            margin = 10;
+            fontsize = 16;
+            penwidth = 2;
+            pencolor = "#888888";
+            style = "filled,rounded";
+            fillcolor = "#d6d6d6";
+          ];
+          "SfltStaticSiteStack/DeployWebsite/AwsCliLayer" [
+            label = " AwsCliLayer";
+            fontsize = 12;
+            image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Compute/64/Arch_AWS-Lambda_64@5x.png";
+            imagescale = "true";
+            imagepos = "tc";
+            penwidth = 0;
+            shape = "node";
+            fixedsize = "true";
+            labelloc = "b";
+            width = 2;
+            height = 2.266;
+          ];
+          "SfltStaticSiteStack/DeployWebsite/CustomResource" [
+            label = " CloudFormation\nCustomResource\nCustomResource";
+            fontsize = 12;
+            image = "/Users/joshpeak/.npm/_npx/b98735c91b702b55/node_modules/cdk-dia/icons/aws/Service/Arch_Management-Governance/64/Arch_AWS-CloudFormation_64@5x.png";
+            imagescale = "true";
+            imagepos = "tc";
+            penwidth = 0;
+            shape = "node";
+            fixedsize = "true";
+            labelloc = "b";
+            width = 1.2;
+            height = 1.898;
+          ];
+        }
+      }
+    }
+  }
+  "SfltAuthStack/GoogleProvider" -> "SfltAuthStack/UserPool" [
+    dir = "both";
+  ];
+  "SfltAuthStack/UserPoolClient" -> "SfltAuthStack/UserPool" [
+    dir = "both";
+  ];
+  "SfltAuthStack/IdentityPool" -> "SfltAuthStack/UserPoolClient" [
+    dir = "both";
+  ];
+  "SfltAuthStack/IdentityPool" -> "SfltAuthStack/UserPool" [
+    dir = "both";
+  ];
+  "SfltAuthStack/UserPoolDomain" -> "SfltAuthStack/UserPool" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/WebsiteBucket" -> "SfltStaticSiteStack/Distribution" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/Distribution" -> "SfltStaticSiteStack/OAC" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/Distribution" -> "SfltStaticSiteStack/WebsiteBucket" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/Distribution" -> "SfltStaticSiteStack/ExportsReader" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/Custom__CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C" -> "SfltStaticSiteStack/WebsiteBucket" [
+    dir = "both";
+  ];
+  "SfltStaticSiteStack/Custom__CDKBucketDeployment8693BB64968944B69AAFB0CC9EB8756C" -> "SfltStaticSiteStack/DeployWebsite/AwsCliLayer" [
+    dir = "both";
+  ];
+}

@@ -1,0 +1,104 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.ruff_cache/
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+.env
+
+# UV
+.venv/
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+*.sublime-project
+*.sublime-workspace
+*.iml
+
+# CDK
+cdk.out/
+.cdk.staging/
+cdk.context.json
+
+
+frontend/playwright-report/
+
+# Generated files (keep templates, ignore generated)
+# cdk/lambda-edge/auth_handler.py is generated from auth_handler.py.template
+# frontend/src/aws-exports.js is generated from CDK stack outputs
+
+# Node.js / React
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp
+.pnp.js
+.npm
+.eslintcache
+
+# Frontend build
+frontend/build/
+frontend/dist/
+frontend/test-results/
+docs/**/*.dot
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.log
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.bak
+*.tmp
+*.orig
+*.db
+*.sqlite3
+*.pyo
+*.pyd
+tmp/
+
+# Claude
+.claude/
