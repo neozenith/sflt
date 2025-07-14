@@ -4,7 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an AWS CDK Python project that deploys a static React website to CloudFront with S3 as the origin, using Origin Access Control (OAC) for secure access.
+This is an AWS CDK Python project that deploys a static React website to CloudFront with S3 as the origin, using Origin Access Control (OAC) for secure access. The React SPA is to leverage AWS Cognito federated with Google Identity auth using the PKCE OAuth flow.
+
+There will be no backend other than S3, CloudFront, Lambda@Edge.
+
+The authentication storage will be in browser cookies storing the JWT token.
+
+The goal being that the webapp will be a frontend to manage the logged in user's Google Calendar which we will get permission from when they SSO sign in.
 
 ## Technology Stack
 
