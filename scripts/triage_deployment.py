@@ -4,11 +4,13 @@
 # dependencies = [
 #   "boto3",
 #   "requests",
+#   "rich",
 # ]
 # ///
 """Comprehensive deployment triage playbook with cached status, e2e tests, and code quality checks."""
 
 import json
+import logging
 import subprocess
 import sys
 import time
@@ -21,45 +23,23 @@ from urllib.parse import urlparse
 import boto3
 import requests
 
+# Configure Rich logging
+from rich.console import Console
+from rich.logging import RichHandler
+
+console = Console()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+)
+logger = logging.getLogger(__name__)
+
 # Constants
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 TMP_DIR = PROJECT_ROOT / "tmp"
 CACHE_DIR = TMP_DIR / "triage-cache"
-
-
-# Colors for output
-class Colors:
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    RED = "\033[91m"
-    BLUE = "\033[94m"
-    PURPLE = "\033[95m"
-    CYAN = "\033[96m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
-
-
-def print_header(text: str):
-    print(f"\n{Colors.BOLD}{Colors.BLUE}{'=' * 60}{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.BLUE}{text}{Colors.ENDC}")
-    print(f"{Colors.BOLD}{Colors.BLUE}{'=' * 60}{Colors.ENDC}")
-
-
-def print_success(text: str):
-    print(f"{Colors.GREEN}✓ {text}{Colors.ENDC}")
-
-
-def print_warning(text: str):
-    print(f"{Colors.YELLOW}⚠ {text}{Colors.ENDC}")
-
-
-def print_error(text: str):
-    print(f"{Colors.RED}✗ {text}{Colors.ENDC}")
-
-
-def print_info(text: str):
-    print(f"{Colors.CYAN}ℹ {text}{Colors.ENDC}")
 
 
 def get_file_mtime(file_path: Path) -> float:
@@ -105,10 +85,10 @@ def get_stack_outputs_cached(stack_name: str, region: str) -> dict[str, Any]:
     cache_file = CACHE_DIR / f"{stack_name}_{region}_outputs.json"
 
     if is_cache_fresh(cache_file, [], max_age_minutes=2):
-        print_info(f"Using cached outputs for {stack_name}")
+        logger.info(f"Using cached outputs for {stack_name}")
         return json.loads(cache_file.read_text())
 
-    print_info(f"Fetching fresh outputs for {stack_name}")
+    logger.info(f"Fetching fresh outputs for {stack_name}")
 
     cmd = [
         "aws",
@@ -127,7 +107,7 @@ def get_stack_outputs_cached(stack_name: str, region: str) -> dict[str, Any]:
     exit_code, stdout, stderr = run_command(cmd)
 
     if exit_code != 0:
-        print_error(f"Failed to get stack outputs: {stderr}")
+        logger.error(f"Failed to get stack outputs: {stderr}")
         return {}
 
     try:
@@ -154,7 +134,7 @@ def get_stack_outputs_cached(stack_name: str, region: str) -> dict[str, Any]:
         return result
 
     except json.JSONDecodeError as e:
-        print_error(f"Failed to parse stack outputs: {e}")
+        logger.error(f"Failed to parse stack outputs: {e}")
         return {}
 
 
@@ -169,10 +149,10 @@ def check_lambda_function_status(function_name: str, region: str) -> dict[str, A
     ]
 
     if is_cache_fresh(cache_file, source_files, max_age_minutes=5):
-        print_info(f"Using cached Lambda status for {function_name}")
+        logger.info(f"Using cached Lambda status for {function_name}")
         return json.loads(cache_file.read_text())
 
-    print_info(f"Checking Lambda function {function_name}")
+    logger.info(f"Checking Lambda function {function_name}")
 
     try:
         lambda_client = boto3.client("lambda", region_name=region)
@@ -209,7 +189,7 @@ def check_lambda_function_status(function_name: str, region: str) -> dict[str, A
         return result
 
     except Exception as e:
-        print_error(f"Failed to check Lambda function: {e}")
+        logger.error(f"Failed to check Lambda function: {e}")
         return {"error": str(e)}
 
 
@@ -253,7 +233,7 @@ def get_lambda_versions(function_name: str, lambda_client=None) -> list[dict[str
         return versions
 
     except Exception as e:
-        print_error(f"Failed to get Lambda versions: {e}")
+        logger.error(f"Failed to get Lambda versions: {e}")
         return []
 
 
@@ -279,7 +259,7 @@ def download_lambda_code(code_location: str) -> Path | None:
         return handler_file if handler_file.exists() else None
 
     except Exception as e:
-        print_error(f"Failed to download Lambda code: {e}")
+        logger.error(f"Failed to download Lambda code: {e}")
         return None
 
 
@@ -325,10 +305,10 @@ def check_cloudfront_distribution(distribution_id: str) -> dict[str, Any]:
     cache_file = CACHE_DIR / f"{distribution_id}_cloudfront_status.json"
 
     if is_cache_fresh(cache_file, [], max_age_minutes=2):
-        print_info(f"Using cached CloudFront status for {distribution_id}")
+        logger.info(f"Using cached CloudFront status for {distribution_id}")
         return json.loads(cache_file.read_text())
 
-    print_info(f"Checking CloudFront distribution {distribution_id}")
+    logger.info(f"Checking CloudFront distribution {distribution_id}")
 
     try:
         cf_client = boto3.client("cloudfront")
@@ -370,7 +350,7 @@ def check_cloudfront_distribution(distribution_id: str) -> dict[str, Any]:
         return result
 
     except Exception as e:
-        print_error(f"Failed to check CloudFront distribution: {e}")
+        logger.error(f"Failed to check CloudFront distribution: {e}")
         return {"error": str(e)}
 
 
@@ -441,7 +421,7 @@ def check_recent_invalidations(distribution_id: str, cf_client=None) -> list[dic
         return invalidations
 
     except Exception as e:
-        print_error(f"Failed to check invalidations: {e}")
+        logger.error(f"Failed to check invalidations: {e}")
         return []
 
 
@@ -450,10 +430,10 @@ def test_endpoint_response(url: str) -> dict[str, Any]:
     cache_file = CACHE_DIR / f"endpoint_test_{urlparse(url).netloc}_{urlparse(url).path.replace('/', '_')}.json"
 
     if is_cache_fresh(cache_file, [], max_age_minutes=1):
-        print_info(f"Using cached endpoint test for {url}")
+        logger.info(f"Using cached endpoint test for {url}")
         return json.loads(cache_file.read_text())
 
-    print_info(f"Testing endpoint {url}")
+    logger.info(f"Testing endpoint {url}")
 
     try:
         response = requests.head(url, timeout=10, allow_redirects=False)
@@ -484,7 +464,7 @@ def test_endpoint_response(url: str) -> dict[str, Any]:
         return result
 
     except Exception as e:
-        print_error(f"Failed to test endpoint: {e}")
+        logger.error(f"Failed to test endpoint: {e}")
         return {"error": str(e)}
 
 
@@ -625,10 +605,10 @@ def run_e2e_tests() -> dict[str, Any]:
 
     # Check if cache is fresh (only cache for 1 minute since tests are deployment-dependent)
     if is_cache_fresh(cache_file, [], max_age_minutes=1):
-        print_info("Using cached e2e test results")
+        logger.info("Using cached e2e test results")
         return json.loads(cache_file.read_text())
 
-    print_info("Running e2e tests")
+    logger.info("Running e2e tests")
 
     # Run e2e tests
     exit_code, stdout, stderr = run_command(
@@ -681,10 +661,10 @@ def run_lint_checks() -> dict[str, Any]:
     existing_sources = [f for f in source_files if f.exists()]
 
     if is_cache_fresh(cache_file, existing_sources, max_age_minutes=5):
-        print_info("Using cached lint check results")
+        logger.info("Using cached lint check results")
         return json.loads(cache_file.read_text())
 
-    print_info("Running lint and format checks")
+    logger.info("Running lint and format checks")
 
     # Run lint command
     lint_exit_code, lint_stdout, lint_stderr = run_command(["make", "lint"], timeout=60)
@@ -730,10 +710,10 @@ def generate_combined_outputs() -> dict[str, Any]:
     # No source file dependencies for combined outputs - it's derived from stack outputs
     # which have their own caching logic
     if is_cache_fresh(cache_file, [], max_age_minutes=2):
-        print_info("Using cached combined outputs")
+        logger.info("Using cached combined outputs")
         return json.loads(cache_file.read_text())
 
-    print_info("Generating combined outputs")
+    logger.info("Generating combined outputs")
 
     # Get both stack outputs (these have their own caching)
     auth_stack = get_stack_outputs_cached("SfltAuthStack", "ap-southeast-2")
@@ -759,7 +739,7 @@ def generate_combined_outputs() -> dict[str, Any]:
 
 def analyze_deployment_status() -> dict[str, Any]:
     """Analyze overall deployment status."""
-    print_header("Deployment Status Analysis")
+    console.rule("[bold magenta]Deployment Status Analysis[/bold magenta]")
 
     # Ensure cache directory exists
     CACHE_DIR.mkdir(parents=True, exist_ok=True)
@@ -815,7 +795,7 @@ def analyze_deployment_status() -> dict[str, Any]:
 
 def analyze_configuration_drift() -> dict[str, Any]:
     """Check for configuration drift in generated files."""
-    print_info("Analyzing configuration drift")
+    logger.info("Analyzing configuration drift")
 
     # Check aws-exports.js
     aws_exports_file = PROJECT_ROOT / "frontend" / "src" / "aws-exports.js"
@@ -872,7 +852,7 @@ def generate_status_summary(
 
     # Check Lambda code (analyzing $LATEST)
     if lambda_status.get("CodeCheck", {}).get("has_login_endpoint"):
-        print_success("Lambda $LATEST code uses /login endpoint")
+        console.print("[green]✓[/green] Lambda $LATEST code uses /login endpoint")
     elif lambda_status.get("CodeCheck", {}).get("has_oauth2_endpoint"):
         issues.append("Lambda $LATEST code still uses /oauth2/authorize endpoint")
 
@@ -890,25 +870,25 @@ def generate_status_summary(
                     f"CloudFront uses Lambda version {cloudfront_version}, "
                     f"but latest numbered version is {latest_numbered_version.get('Version')}"
                 )
-                print_warning(
+                logger.warning(
                     f"Version mismatch: CloudFront={cloudfront_version}, "
                     f"Latest numbered version={latest_numbered_version.get('Version')}"
                 )
             else:
-                print_success(f"CloudFront uses latest numbered Lambda version {cloudfront_version}")
+                logger.info(f"✓ CloudFront uses latest numbered Lambda version {cloudfront_version}")
         else:
-            print_warning("No numbered Lambda versions found")
+            logger.warning("No numbered Lambda versions found")
 
     # Check endpoint response
     if endpoint_test.get("redirect_analysis", {}).get("uses_login_endpoint"):
-        print_success("Endpoint redirects to /login")
+        console.print("[green]✓[/green] Endpoint redirects to /login")
     elif endpoint_test.get("redirect_analysis", {}).get("uses_oauth2_endpoint"):
         issues.append("Endpoint still redirects to /oauth2/authorize (version mismatch?)")
 
     # Check cache headers
     x_cache = endpoint_test.get("x_cache", "")
     if "LambdaGeneratedResponse" in x_cache:
-        print_success("Response generated by Lambda@Edge")
+        console.print("[green]✓[/green] Response generated by Lambda@Edge")
     else:
         warnings.append("Response may not be from Lambda@Edge")
 
@@ -917,7 +897,7 @@ def generate_status_summary(
     recent_completed = [inv for inv in recent_invalidations if inv.get("Status") == "Completed" and inv.get("IsRecent")]
 
     if recent_completed:
-        print_success(f"Recent invalidation completed {recent_completed[0].get('AgeMinutes', 0):.1f} minutes ago")
+        console.print(f"✓ Recent invalidation completed {recent_completed[0].get('AgeMinutes', 0):.1f} minutes ago")
 
     # Check configuration drift
     if not config_analysis["aws_exports"]["is_generated"]:
@@ -928,9 +908,9 @@ def generate_status_summary(
 
     # Check e2e tests
     if e2e_results.get("passed"):
-        print_success("E2E tests passed")
+        console.print("[green]✓[/green] E2E tests passed")
     elif e2e_results.get("exit_code") == 0:
-        print_success("E2E tests completed successfully")
+        console.print("[green]✓[/green] E2E tests completed successfully")
     else:
         issues.append("E2E tests failed")
         if e2e_results.get("tests_failed", 0) > 0:
@@ -940,7 +920,7 @@ def generate_status_summary(
 
     # Check lint results
     if lint_results.get("overall_passed"):
-        print_success("Lint and format checks passed")
+        console.print("[green]✓[/green] Lint and format checks passed")
     else:
         if not lint_results.get("lint", {}).get("passed"):
             issues.append("Linting checks failed")
@@ -1076,81 +1056,81 @@ def generate_recommendations(
 
 def main():
     """Main triage function."""
-    print_header("Deployment Triage Playbook")
+    console.rule("[bold magenta]Deployment Triage Playbook[/bold magenta]")
 
     try:
         analysis = analyze_deployment_status()
 
         # Print summary
-        print_header("Status Summary")
+        console.rule("[bold green]Status Summary[/bold green]")
 
         summary = analysis["summary"]
         if summary["healthy"]:
-            print_success("✅ System appears healthy")
+            console.print("[green]✓[/green] ✅ System appears healthy")
         else:
-            print_error("❌ Issues detected")
+            logger.error("❌ Issues detected")
 
         if summary["issues"]:
-            print("\n" + Colors.RED + "Issues:" + Colors.ENDC)
+            logger.info("\nIssues:")
             for issue in summary["issues"]:
-                print(f"  • {issue}")
+                logger.info(f"  • {issue}")
 
         if summary["warnings"]:
-            print("\n" + Colors.YELLOW + "Warnings:" + Colors.ENDC)
+            logger.info("\nWarnings:")
             for warning in summary["warnings"]:
-                print(f"  • {warning}")
+                logger.info(f"  • {warning}")
 
         if summary["recommendations"]:
-            print("\n" + Colors.CYAN + "Recommendations:" + Colors.ENDC)
+            logger.info("\nRecommendations:")
             for rec in summary["recommendations"]:
-                print(f"  • {rec}")
+                logger.info(f"  • {rec}")
 
         # Show test and lint status details
-        print("\n" + Colors.BLUE + "Test & Code Quality Status:" + Colors.ENDC)
+        logger.info("\nTest & Code Quality Status:")
 
         # E2E test status
         e2e_status = summary.get("e2e_status", {})
         if e2e_status.get("passed"):
-            print_success("E2E tests: PASSED")
+            console.print("[green]✓[/green] E2E tests: PASSED")
         elif e2e_status.get("exit_code") == 0:
-            print_success("E2E tests: COMPLETED")
+            console.print("[green]✓[/green] E2E tests: COMPLETED")
         else:
-            print_error(f"E2E tests: FAILED (exit code {e2e_status.get('exit_code', 'unknown')})")
+            logger.error(f"E2E tests: FAILED (exit code {e2e_status.get('exit_code', 'unknown')})")
             if e2e_status.get("tests_failed", 0) > 0:
-                print_error(
+                logger.error(
                     f"  Failed: {e2e_status.get('tests_failed', 0)}, Passed: {e2e_status.get('tests_passed', 0)}"
                 )
 
             # Show failure summary if available
             failure_summary = e2e_status.get("failure_summary", {})
             if failure_summary.get("short_failures"):
-                print_error("  Common issues:")
+                logger.error("  Common issues:")
                 for short_failure in failure_summary["short_failures"][:2]:
-                    print_error(f"    - {short_failure}")
+                    logger.error(f"    - {short_failure}")
 
         # Lint status
         lint_status = summary.get("lint_status", {})
         if lint_status.get("overall_passed"):
-            print_success("Code quality: PASSED")
+            console.print("[green]✓[/green] Code quality: PASSED")
         else:
             if not lint_status.get("lint", {}).get("passed"):
-                print_error("Linting: FAILED")
+                logger.error("Linting: FAILED")
                 lint_summary = lint_status.get("lint", {}).get("failure_summary", {})
                 if lint_summary and lint_summary.get("total_issues", 0) > 0:
-                    print_error(f"  {lint_summary['total_issues']} issues found")
+                    console.print(f"  {lint_summary['total_issues']} issues found")
 
             if not lint_status.get("format", {}).get("passed"):
-                print_error("Formatting: FAILED")
+                logger.error("Formatting: FAILED")
                 format_summary = lint_status.get("format", {}).get("failure_summary", {})
                 if format_summary and format_summary.get("total_issues", 0) > 0:
-                    print_error(f"  {format_summary['total_issues']} format issues found")
+                    console.print(f"  {format_summary['total_issues']} format issues found")
 
-        print(f"\n{Colors.PURPLE}📊 Full analysis saved to: {CACHE_DIR / 'deployment_analysis.json'}{Colors.ENDC}")
+        logger.info(f"\n📊 Full analysis saved to: {CACHE_DIR / 'deployment_analysis.json'}")
 
         return 0 if summary["healthy"] else 1
 
     except Exception as e:
-        print_error(f"Triage failed: {e}")
+        logger.error(f"Triage failed: {e}")
         return 1
 
 

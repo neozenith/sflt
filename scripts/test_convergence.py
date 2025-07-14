@@ -1,23 +1,28 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.12"
-# dependencies = []
+# dependencies = [
+#   "rich",
+# ]
 # ///
 """Test the configuration convergence functionality."""
 
+import logging
 import subprocess
 import sys
 from pathlib import Path
 
+# Configure Rich logging
+from rich.console import Console
+from rich.logging import RichHandler
 
-# Colors for output
-class Colors:
-    GREEN = "\033[92m"
-    YELLOW = "\033[93m"
-    RED = "\033[91m"
-    BLUE = "\033[94m"
-    ENDC = "\033[0m"
-    BOLD = "\033[1m"
+console = Console()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+)
+logger = logging.getLogger(__name__)
 
 
 def run_command(cmd: list[str]) -> tuple[int, str, str]:
@@ -28,7 +33,7 @@ def run_command(cmd: list[str]) -> tuple[int, str, str]:
 
 def test_convergence():
     """Test the convergence detection functionality."""
-    print(f"{Colors.BLUE}Testing configuration convergence...{Colors.ENDC}")
+    console.rule("[bold magenta]Configuration Convergence Test[/bold magenta]")
 
     # Path to aws-exports.js
     aws_exports_path = Path(__file__).parent.parent / "frontend" / "src" / "aws-exports.js"
@@ -36,14 +41,14 @@ def test_convergence():
     # Backup current file
     if aws_exports_path.exists():
         original_content = aws_exports_path.read_text()
-        print(f"{Colors.BLUE}Backed up original aws-exports.js{Colors.ENDC}")
+        console.print("[dim]Backed up original aws-exports.js[/dim]")
     else:
         original_content = None
-        print(f"{Colors.YELLOW}No existing aws-exports.js found{Colors.ENDC}")
+        console.print("[yellow]No existing aws-exports.js found[/yellow]")
 
     try:
         # Test 1: Corrupt the CloudFront domain
-        print(f"\n{Colors.BOLD}Test 1: Simulating CloudFront domain drift{Colors.ENDC}")
+        console.rule("[bold blue]Test 1: Simulating CloudFront domain drift[/bold blue]")
         if original_content:
             corrupted_content = original_content.replace("d3nteozhns257o.cloudfront.net", "old-domain.cloudfront.net")
             aws_exports_path.write_text(corrupted_content)
@@ -52,39 +57,40 @@ def test_convergence():
         exit_code, stdout, stderr = run_command(["uv", "run", "scripts/generate_aws_exports.py"])
 
         if exit_code == 2:
-            print(f"{Colors.GREEN}✓ Correctly detected configuration drift (exit code 2){Colors.ENDC}")
+            console.print("[green]✓[/green] Correctly detected configuration drift ([cyan]exit code 2[/cyan])")
         else:
-            print(f"{Colors.RED}✗ Failed to detect drift (exit code {exit_code}){Colors.ENDC}")
+            console.print(f"[red]✗[/red] Failed to detect drift ([red]exit code {exit_code}[/red])")
             return False
 
         # Test 2: Generate correct config
-        print(f"\n{Colors.BOLD}Test 2: Generating correct configuration{Colors.ENDC}")
+        console.rule("[bold blue]Test 2: Generating correct configuration[/bold blue]")
         new_content = aws_exports_path.read_text()
 
         if "d3nteozhns257o.cloudfront.net" in new_content:
-            print(f"{Colors.GREEN}✓ Configuration correctly regenerated{Colors.ENDC}")
+            console.print("[green]✓[/green] Configuration correctly regenerated")
         else:
-            print(f"{Colors.RED}✗ Configuration not regenerated correctly{Colors.ENDC}")
+            console.print("[red]✗[/red] Configuration not regenerated correctly")
             return False
 
         # Test 3: Run again - should detect no drift
-        print(f"\n{Colors.BOLD}Test 3: Verifying no drift after correction{Colors.ENDC}")
+        console.rule("[bold blue]Test 3: Verifying no drift after correction[/bold blue]")
         exit_code, stdout, stderr = run_command(["uv", "run", "scripts/generate_aws_exports.py"])
 
         if exit_code == 0:
-            print(f"{Colors.GREEN}✓ Correctly detected no drift (exit code 0){Colors.ENDC}")
+            console.print("[green]✓[/green] Correctly detected no drift ([cyan]exit code 0[/cyan])")
         else:
-            print(f"{Colors.RED}✗ Incorrectly detected drift (exit code {exit_code}){Colors.ENDC}")
+            console.print(f"[red]✗[/red] Incorrectly detected drift ([red]exit code {exit_code}[/red])")
             return False
 
-        print(f"\n{Colors.GREEN}{Colors.BOLD}All tests passed!{Colors.ENDC}")
+        console.rule("[bold green]Test Results[/bold green]")
+        console.print("[green]✅[/green] [bold]All tests passed![/bold]")
         return True
 
     finally:
         # Restore original file
         if original_content:
             aws_exports_path.write_text(original_content)
-            print(f"\n{Colors.BLUE}Restored original aws-exports.js{Colors.ENDC}")
+            console.print("\n[dim]Restored original aws-exports.js[/dim]")
 
 
 if __name__ == "__main__":

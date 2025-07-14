@@ -1,26 +1,53 @@
 #!/usr/bin/env python3
 # /// script
 # requires-python = ">=3.12"
-# dependencies = []
+# dependencies = [
+#   "boto3",
+#   "rich",
+# ]
 # ///
 """Generate aws-exports.js from CDK stack outputs."""
 
 import json
+import logging
 import sys
 from pathlib import Path
 from typing import Any
 
-# Import common utilities
-from utils import (
-    FRONTEND_DIR,
-    exit_with_error,
-    exit_with_success,
-    get_stack_outputs,
-    print_header,
-    print_info,
-    print_success,
-    print_warning,
+import boto3
+
+# Configure Rich logging
+from rich.console import Console
+from rich.logging import RichHandler
+
+console = Console()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
 )
+logger = logging.getLogger(__name__)
+
+# Constants
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+FRONTEND_DIR = PROJECT_ROOT / "frontend"
+
+
+def get_stack_outputs(stack_name: str, region: str) -> dict[str, str]:
+    """Get CloudFormation stack outputs."""
+    try:
+        cf_client = boto3.client("cloudformation", region_name=region)
+        response = cf_client.describe_stacks(StackName=stack_name)
+
+        outputs = {}
+        for output in response["Stacks"][0]["Outputs"]:
+            outputs[output["OutputKey"]] = output["OutputValue"]
+
+        return outputs
+    except Exception as e:
+        logger.error(f"Failed to get stack outputs for {stack_name}: {e}")
+        return {}
 
 
 def generate_aws_exports_content(auth_outputs: dict[str, str], static_outputs: dict[str, str]) -> str:
@@ -100,7 +127,7 @@ def read_existing_config(file_path: Path) -> dict[str, Any]:
         return config
 
     except Exception as e:
-        print_warning(f"Could not parse existing config: {e}")
+        logger.warning(f"Could not parse existing config: {e}")
         return {}
 
 
@@ -112,13 +139,17 @@ def check_config_drift(
 
     # Check User Pool ID
     if existing_config.get("userPoolId") != auth_outputs.get("UserPoolId"):
-        print_warning(f"User Pool ID drift: {existing_config.get('userPoolId')} → {auth_outputs.get('UserPoolId')}")
+        old_id = existing_config.get('userPoolId')
+        new_id = auth_outputs.get('UserPoolId')
+        console.print(f"[yellow]User Pool ID drift:[/yellow] [red]{old_id}[/red] → [green]{new_id}[/green]")
         drifted = True
 
     # Check User Pool Client ID
     if existing_config.get("userPoolClientId") != auth_outputs.get("UserPoolClientId"):
-        print_warning(
-            f"Client ID drift: {existing_config.get('userPoolClientId')} → {auth_outputs.get('UserPoolClientId')}"
+        old_client = existing_config.get('userPoolClientId')
+        new_client = auth_outputs.get('UserPoolClientId')
+        console.print(
+            f"[yellow]Client ID drift:[/yellow] [red]{old_client}[/red] → [green]{new_client}[/green]"
         )
         drifted = True
 
@@ -126,7 +157,7 @@ def check_config_drift(
     current_cf = existing_config.get("cloudfrontDomain", "").replace("https://", "").replace("/", "")
     new_cf = static_outputs.get("DistributionDomainName", "")
     if current_cf != new_cf:
-        print_warning(f"CloudFront domain drift: {current_cf} → {new_cf}")
+        console.print(f"[yellow]CloudFront domain drift:[/yellow] [red]{current_cf}[/red] → [green]{new_cf}[/green]")
         drifted = True
 
     return drifted
@@ -134,27 +165,31 @@ def check_config_drift(
 
 def main():
     """Main function to generate aws-exports.js from CDK outputs."""
-    print_header("AWS Exports Configuration Generator")
+    console.rule("[bold magenta]AWS Exports Configuration Generator[/bold magenta]")
 
     # Get stack outputs
-    print_info("Fetching Auth Stack outputs...")
+    console.print("\n[dim]Fetching Auth Stack outputs...[/dim]")
     auth_outputs = get_stack_outputs("SfltAuthStack", "ap-southeast-2")
 
     if not auth_outputs:
-        exit_with_error("No Auth Stack outputs found. Is the stack deployed?")
+        console.print("[red]✗[/red] No Auth Stack outputs found. Is the stack deployed?")
+        return 1
 
-    print_info("Fetching Static Site Stack outputs...")
+    console.print("[dim]Fetching Static Site Stack outputs...[/dim]")
     static_outputs = get_stack_outputs("SfltStaticSiteStack", "us-east-1")
 
     if not static_outputs:
-        exit_with_error("No Static Site Stack outputs found. Is the stack deployed?")
+        console.print("[red]✗[/red] No Static Site Stack outputs found. Is the stack deployed?")
+        return 1
 
     # Validate required outputs
     required_auth_outputs = ["UserPoolId", "UserPoolClientId", "IdentityPoolId", "UserPoolDomainName"]
     missing_outputs = [key for key in required_auth_outputs if key not in auth_outputs]
 
     if missing_outputs:
-        exit_with_error(f"Missing required Auth Stack outputs: {', '.join(missing_outputs)}")
+        missing_str = ', '.join(missing_outputs)
+        console.print(f"[red]✗[/red] Missing required Auth Stack outputs: [yellow]{missing_str}[/yellow]")
+        return 1
 
     # Path to aws-exports.js
     aws_exports_path = FRONTEND_DIR / "src" / "aws-exports.js"
@@ -162,39 +197,42 @@ def main():
     # Check for existing config and drift
     existing_config = read_existing_config(aws_exports_path)
     if existing_config:
-        print_info("Checking for configuration drift...")
+        console.print("\n[dim]Checking for configuration drift...[/dim]")
         has_drift = check_config_drift(existing_config, auth_outputs, static_outputs)
         if has_drift:
-            print_warning("Configuration drift detected")
+            console.print("[yellow]Configuration drift detected[/yellow]")
         else:
-            print_success("No configuration drift detected")
+            console.print("[green]✓[/green] No configuration drift detected")
     else:
         has_drift = False
 
     # Generate new content
-    print_info("Generating aws-exports.js content...")
+    console.print("\n[dim]Generating aws-exports.js content...[/dim]")
     content = generate_aws_exports_content(auth_outputs, static_outputs)
 
     # Write to file
     try:
         aws_exports_path.write_text(content)
-        print_success(f"Generated: {aws_exports_path}")
+        console.print(f"[green]✓[/green] Generated: [cyan]{aws_exports_path}[/cyan]")
 
         # Print summary
-        print_info("\nConfiguration Summary:")
-        print_info(f"  User Pool ID: {auth_outputs['UserPoolId']}")
-        print_info(f"  Client ID: {auth_outputs['UserPoolClientId']}")
-        print_info(f"  CloudFront: https://{static_outputs.get('DistributionDomainName', 'N/A')}/")
+        console.print("\n[bold]Configuration Summary:[/bold]")
+        console.print(f"  [cyan]User Pool ID:[/cyan] [yellow]{auth_outputs['UserPoolId']}[/yellow]")
+        console.print(f"  [cyan]Client ID:[/cyan] [yellow]{auth_outputs['UserPoolClientId']}[/yellow]")
+        cf_domain = static_outputs.get('DistributionDomainName', 'N/A')
+        console.print(f"  [cyan]CloudFront:[/cyan] [link]https://{cf_domain}/[/link]")
 
         if has_drift:
-            exit_with_success("\n✅ Configuration updated to match stack outputs")
-            sys.exit(2)  # Special exit code for drift detected
+            console.print("\n[green]✅[/green] Configuration updated to match stack outputs")
+            return 2  # Special exit code for drift detected
         else:
-            exit_with_success("\n✅ Configuration generated successfully")
+            console.print("\n[green]✅[/green] Configuration generated successfully")
+            return 0
 
     except Exception as e:
-        exit_with_error(f"Failed to write aws-exports.js: {e}")
+        console.print(f"[red]✗[/red] Failed to write aws-exports.js: [red]{e}[/red]")
+        return 1
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

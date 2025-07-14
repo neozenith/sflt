@@ -58,8 +58,17 @@ All scripts should follow this structure:
 More detailed description if needed.
 """
 
+import logging
 import sys
 from pathlib import Path
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(message)s',
+    stream=sys.stdout
+)
+logger = logging.getLogger(__name__)
 
 # Add any constants here
 SCRIPT_DIR = Path(__file__).parent
@@ -68,25 +77,150 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 def main():
     """Main function."""
     # Script logic here
-    pass
+    logger.info("Script starting...")
+    # Use logger.info(), logger.warning(), logger.error() for output
+    return 0
 
 if __name__ == "__main__":
     sys.exit(main())
 ```
 
-### 4. Common Patterns
+### 4. Rich Logging Conventions
 
-#### Colors for Terminal Output
+#### Rich Setup
+
+All scripts use the Rich library for enhanced colored output. The setup combines Rich's Console for colored markup with Python's logging for plain messages:
 
 ```python
-class Colors:
-    GREEN = '\033[92m'
-    YELLOW = '\033[93m'
-    RED = '\033[91m'
-    BLUE = '\033[94m'
-    ENDC = '\033[0m'
-    BOLD = '\033[1m'
+import logging
+import sys
+from rich.console import Console
+from rich.logging import RichHandler
+
+# Configure Rich
+console = Console()
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(message)s",
+    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+)
+logger = logging.getLogger(__name__)
 ```
+
+#### Output Patterns
+
+Use the appropriate method for different message types:
+
+- **`console.print()`** - For messages with Rich markup and colors
+- **`logger.info()`** - For plain informational messages
+- **`logger.warning()`** - For plain warning messages  
+- **`logger.error()`** - For plain error messages
+
+#### Rich Markup Patterns
+
+**Success Messages:**
+```python
+console.print("[green]✓[/green] Operation completed successfully")
+console.print(f"[green]✓[/green] Generated [cyan]{file_count}[/cyan] files")
+```
+
+**Error Messages:**
+```python
+console.print("[red]✗[/red] Failed to connect to AWS service")
+console.print(f"[red]✗[/red] Missing required value: [yellow]{param_name}[/yellow]")
+```
+
+**Warning Messages:**
+```python
+console.print("[yellow]Configuration drift detected[/yellow]")
+console.print(f"[yellow]Retrying operation in {delay} seconds[/yellow]")
+```
+
+**Information with Highlighting:**
+```python
+console.print(f"  [cyan]User Pool ID:[/cyan] [yellow]{pool_id}[/yellow]")
+console.print(f"[dim]Processing {item_count} items...[/dim]")
+```
+
+**Plain Messages (no markup):**
+```python
+logger.info("Found credentials in shared credentials file: ~/.aws/credentials")
+logger.warning("PKCE requirement cannot be checked via API")
+logger.error(f"Failed to get stack outputs for {stack_name}: {e}")
+```
+
+#### Headers and Sections
+
+Use Rich's `console.rule()` for professional section headers:
+
+```python
+console.rule("[bold magenta]Section Title[/bold magenta]")
+console.rule("[bold blue]Configuration Check[/bold blue]")
+console.rule("[bold green]Test Results[/bold green]")
+```
+
+#### Advanced Rich Features
+
+**Links and URLs:**
+```python
+logger.info(f"Visit: [link]https://example.com[/link]")
+```
+
+**Syntax Highlighting:**
+```python
+from rich.syntax import Syntax
+syntax = Syntax(code_content, "python", theme="monokai")
+console.print(syntax)
+```
+
+**Tables for Structured Data:**
+```python
+from rich.table import Table
+table = Table(title="Configuration Summary")
+table.add_column("Key", style="cyan")
+table.add_column("Value", style="yellow")
+table.add_row("User Pool ID", pool_id)
+console.print(table)
+```
+
+#### Example Rich Output Patterns
+
+```python
+# Headers
+console.rule("[bold magenta]AWS Configuration Check[/bold magenta]")
+
+# Success with context
+logger.info("[green]✓[/green] Found User Pool ID: [cyan]ap-southeast-2_abc123[/cyan]")
+
+# Warnings with highlighting
+logger.warning("[yellow]Configuration drift:[/yellow] [red]old_value[/red] → [green]new_value[/green]")
+
+# Errors with context
+logger.error("[red]✗[/red] Missing required outputs: [yellow]UserPoolId, ClientId[/yellow]")
+
+# Information with structure
+logger.info("[bold]Template variables:[/bold]")
+logger.info(f"  [cyan]COGNITO_DOMAIN:[/cyan] [yellow]{domain}[/yellow]")
+
+# Links and interactive elements
+logger.info("CloudFront domain: [link]https://d123.cloudfront.net[/link]")
+```
+
+#### Rich Dependencies
+
+Each script includes Rich in its PEP-723 dependencies:
+
+```python
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#   "boto3",
+#   "rich",
+# ]
+# ///
+```
+
+### 5. Common Patterns
 
 #### AWS Profile Handling
 
@@ -98,14 +232,14 @@ import os
 # No need to manually configure it
 ```
 
-### 5. Error Handling
+### 6. Error Handling
 
 Scripts should return appropriate exit codes:
 - `0` - Success
 - `1` - General error
 - `2` - Special condition (e.g., configuration drift detected)
 
-### 6. Documentation
+### 7. Documentation
 
 Each script should have:
 - A module-level docstring explaining its purpose
