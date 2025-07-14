@@ -26,6 +26,11 @@ help:
 	@echo "Scripts can also be run directly:"
 	@echo "  uv run scripts/script_name.py"
 
+setup-claude-mcp:
+	claude mcp add playwright npx @playwright/mcp@latest
+	claude mcp add context7 -- npx -y @upstash/context7-mcp
+	claude mcp add aws-nx-mcp -- npx -y -p @aws/nx-plugin aws-nx-mcp
+
 install:
 	uv sync
 	$(MAKE) install-frontend
