@@ -18,10 +18,10 @@ def test_navigation_links_present(page: Page, cloudfront_url: str):
     # Check public links
     expect(page.locator("text=Home")).to_be_visible()
     expect(page.locator("text=Public")).to_be_visible()
-    
+
     # Check for Sign In button (since user is not authenticated)
     expect(page.locator("text=Sign In with Google")).to_be_visible()
-    
+
     # Protected links should NOT be visible when not authenticated
     expect(page.locator("text=Admin")).not_to_be_visible()
     expect(page.locator("text=Dashboard")).not_to_be_visible()
@@ -62,7 +62,7 @@ def test_protected_links_attempt_navigation(page: Page, cloudfront_url: str):
     page.goto(f"{cloudfront_url}/admin")
 
     # Should redirect to Cognito login
-    page.wait_for_load_state('networkidle')
+    page.wait_for_load_state("networkidle")
     final_url = page.url
     assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in final_url
 

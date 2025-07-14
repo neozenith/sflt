@@ -1,3 +1,10 @@
+
+# Templated code files
+# scripts/generate_aws_exports.py generates frontend/src/aws-exports.js
+frontend/src/aws-exports.js
+# scripts/generate_auth_handler.py generates
+cdk/lambda-edge/auth_handler.py
+
 # Python
 __pycache__/
 *.py[cod]

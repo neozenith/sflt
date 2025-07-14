@@ -1,5 +1,6 @@
 import { useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
+import PropTypes from 'prop-types'
 import { useAuth } from '../contexts/AuthContext'
 
 /**
@@ -21,7 +22,7 @@ const AuthManager = ({ children }) => {
 
         if (code && state) {
           console.log('OAuth callback detected, processing...')
-          
+
           // AWS Amplify will automatically handle the OAuth callback
           // We just need to parse the state and redirect to target
           const stateData = JSON.parse(decodeURIComponent(state))
@@ -60,7 +61,10 @@ const AuthManager = ({ children }) => {
   }, [location, navigate])
 
   // Show loading state during OAuth callback processing
-  if (location.search && (location.search.includes('code=') || location.search.includes('error='))) {
+  if (
+    location.search &&
+    (location.search.includes('code=') || location.search.includes('error='))
+  ) {
     return (
       <div className="auth-callback">
         <h2>Completing sign in...</h2>
@@ -72,6 +76,10 @@ const AuthManager = ({ children }) => {
 
   // Normal rendering
   return children
+}
+
+AuthManager.propTypes = {
+  children: PropTypes.node.isRequired
 }
 
 export default AuthManager

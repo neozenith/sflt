@@ -21,9 +21,13 @@ def test_protected_routes_return_403(page: Page, cloudfront_url: str, protected_
 
     # Check that we were redirected to Cognito login
     final_url = response.url
-    assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in final_url, f"Expected redirect to Cognito, got {final_url}"
+    assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in final_url, (
+        f"Expected redirect to Cognito, got {final_url}"
+    )
     # Can be either oauth2/authorize or login page
-    assert ("oauth2/authorize" in final_url or "/login" in final_url), f"Expected OAuth authorize or login endpoint, got {final_url}"
+    assert "oauth2/authorize" in final_url or "/login" in final_url, (
+        f"Expected OAuth authorize or login endpoint, got {final_url}"
+    )
 
 
 def test_protected_route_response_body(page: Page, cloudfront_url: str):
@@ -36,7 +40,7 @@ def test_protected_route_response_body(page: Page, cloudfront_url: str):
     # Check we're on the Cognito login page
     final_url = response.url
     assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in final_url
-    
+
     # Check for login page elements
     content = page.content()
     assert "sign in" in content.lower() or "login" in content.lower() or "oauth" in content.lower()
@@ -73,7 +77,9 @@ def test_protected_route_with_subpaths(page: Page, cloudfront_url: str):
         response = page.goto(f"{cloudfront_url}{subpath}")
         assert response is not None
         assert response.status == 200, f"Expected redirect for subpath {subpath}, got {response.status}"
-        assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in response.url, f"Expected Cognito redirect for {subpath}"
+        assert "sflt-auth.auth.ap-southeast-2.amazoncognito.com" in response.url, (
+            f"Expected Cognito redirect for {subpath}"
+        )
 
 
 def test_case_sensitivity(page: Page, cloudfront_url: str):

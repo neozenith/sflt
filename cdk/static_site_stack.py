@@ -1,4 +1,5 @@
 import os
+
 from aws_cdk import (
     CfnOutput,
     Duration,
@@ -27,9 +28,7 @@ from constructs import Construct
 
 
 class StaticSiteStack(Stack):
-    def __init__(
-        self, scope: Construct, construct_id: str, **kwargs
-    ) -> None:
+    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
         super().__init__(scope, construct_id, **kwargs)
 
         # Create Lambda@Edge function for route protection
@@ -49,11 +48,13 @@ class StaticSiteStack(Stack):
         # Create a version for Lambda@Edge (required for CloudFront)
         # Force new version when Lambda code changes by using file mtime
         import datetime
-        
+
         auth_handler_path = os.path.join(os.path.dirname(__file__), "lambda-edge", "auth_handler.py")
         if os.path.exists(auth_handler_path):
             mtime = os.path.getmtime(auth_handler_path)
-            version_description = f"Lambda@Edge auth handler - {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}"
+            version_description = (
+                f"Lambda@Edge auth handler - {datetime.datetime.fromtimestamp(mtime).strftime('%Y-%m-%d %H:%M:%S')}"
+            )
         else:
             version_description = f"Lambda@Edge auth handler - {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
 
@@ -189,4 +190,3 @@ class StaticSiteStack(Stack):
             value=website_bucket.bucket_name,
             description="S3 bucket name",
         )
-
