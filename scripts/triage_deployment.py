@@ -5,6 +5,7 @@
 #   "boto3",
 #   "requests",
 #   "rich",
+#   "python-dateutil",
 # ]
 # ///
 """Comprehensive deployment triage playbook with cached status, e2e tests, and code quality checks."""
@@ -838,6 +839,24 @@ def generate_status_summary(
     """Generate a human-readable status summary."""
     issues = []
     warnings = []
+    
+    # Check Lambda@Edge propagation time
+    lambda_modified_time = lambda_status.get("LastModified")
+    if lambda_modified_time:
+        from dateutil import parser
+        try:
+            modified_dt = parser.parse(lambda_modified_time)
+            current_dt = datetime.now(modified_dt.tzinfo)
+            minutes_since_deploy = (current_dt - modified_dt).total_seconds() / 60
+            
+            if minutes_since_deploy < 30:
+                warnings.append(
+                    f"Lambda@Edge was modified {minutes_since_deploy:.1f} minutes ago. "
+                    f"Global propagation takes 15-30 minutes - issues may resolve automatically."
+                )
+        except Exception:
+            # If we can't parse the date, just skip the propagation check
+            pass
 
     # Check Lambda code vs CloudFront association
     lambda_versions = lambda_status.get("Versions", [])
@@ -1076,9 +1095,14 @@ def main():
                 logger.info(f"  • {issue}")
 
         if summary["warnings"]:
-            logger.info("\nWarnings:")
+            console.print("\n[bold yellow]Warnings:[/bold yellow]")
             for warning in summary["warnings"]:
-                logger.info(f"  • {warning}")
+                if "Lambda@Edge was modified" in warning and "propagation takes" in warning:
+                    # Highlight Lambda@Edge propagation warnings prominently
+                    console.print(f"  ⏱️  [bold yellow]{warning}[/bold yellow]")
+                    console.print("     [dim]💡 Tip: Lambda@Edge updates replicate globally - wait before troubleshooting[/dim]")
+                else:
+                    console.print(f"  • {warning}")
 
         if summary["recommendations"]:
             logger.info("\nRecommendations:")
