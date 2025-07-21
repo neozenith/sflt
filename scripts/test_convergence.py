@@ -18,9 +18,7 @@ from rich.logging import RichHandler
 
 console = Console()
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+    level=logging.INFO, format="%(message)s", handlers=[RichHandler(console=console, show_path=False, show_time=False)]
 )
 logger = logging.getLogger(__name__)
 

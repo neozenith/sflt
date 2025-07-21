@@ -2,8 +2,10 @@ import os
 
 from aws_cdk import (
     CfnOutput,
+    RemovalPolicy,
     SecretValue,
     Stack,
+    Tags,
 )
 from aws_cdk import (
     aws_cognito as cognito,
@@ -13,27 +15,43 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from .config import DeploymentConfig
+
 
 class AuthStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, cloudfront_domain: str | None = None, **kwargs) -> None:
+    def __init__(
+        self,
+        scope: Construct,
+        construct_id: str,
+        config: DeploymentConfig,
+        cloudfront_domain: str | None = None,
+        **kwargs,
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        self.config = config
+
+        # Apply consistent tagging
+        self._apply_tags()
 
         # Create Secrets Manager secret for Google OAuth credentials
         google_oauth_secret = secretsmanager.Secret(
             self,
             "GoogleOAuthSecret",
-            description="Google OAuth credentials for Cognito integration",
+            secret_name=f"{self.config.resource_prefix}-google-oauth",
+            description=f"Google OAuth credentials for {self.config.branch}",
             secret_object_value={
                 "client_id": SecretValue.unsafe_plain_text(os.getenv("GOOGLE_OAUTH_CLIENT_ID")),
                 "client_secret": SecretValue.unsafe_plain_text(os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")),
             },
+            removal_policy=self._get_removal_policy(),
         )
 
         # Create Cognito User Pool
         user_pool = cognito.UserPool(
             self,
             "UserPool",
-            user_pool_name="sflt-user-pool",
+            user_pool_name=f"{self.config.resource_prefix}-user-pool",
             sign_in_aliases=cognito.SignInAliases(email=True),
             self_sign_up_enabled=True,
             auto_verify=cognito.AutoVerifiedAttrs(email=True),
@@ -54,6 +72,7 @@ class AuthStack(Stack):
                 require_symbols=True,
             ),
             account_recovery=cognito.AccountRecovery.EMAIL_ONLY,
+            removal_policy=self._get_removal_policy(),
         )
 
         # Create Google Identity Provider
@@ -76,7 +95,7 @@ class AuthStack(Stack):
             self,
             "UserPoolClient",
             user_pool_id=user_pool.user_pool_id,
-            client_name="sflt-client",
+            client_name=f"{self.config.resource_prefix}-client",
             generate_secret=False,  # For public clients (SPA)
             explicit_auth_flows=[
                 "ALLOW_USER_SRP_AUTH",
@@ -110,7 +129,7 @@ class AuthStack(Stack):
         identity_pool = cognito.CfnIdentityPool(
             self,
             "IdentityPool",
-            identity_pool_name="sflt_identity_pool",
+            identity_pool_name=f"{self.config.resource_prefix}_identity_pool".replace("-", "_"),
             allow_unauthenticated_identities=False,
             cognito_identity_providers=[
                 cognito.CfnIdentityPool.CognitoIdentityProviderProperty(
@@ -126,7 +145,7 @@ class AuthStack(Stack):
             "UserPoolDomain",
             user_pool=user_pool,
             cognito_domain=cognito.CognitoDomainOptions(
-                domain_prefix="sflt-auth"  # This will create sflt-auth.auth.region.amazoncognito.com
+                domain_prefix=f"{self.config.resource_prefix}-auth"  # This will create {prefix}-auth.auth.region.amazoncognito.com
             ),
         )
 
@@ -135,28 +154,32 @@ class AuthStack(Stack):
             self,
             "UserPoolId",
             value=user_pool.user_pool_id,
-            description="Cognito User Pool ID",
+            export_name=f"{self.config.stack_prefix}-user-pool-id",
+            description=f"User Pool ID for {self.config.branch}",
         )
 
         CfnOutput(
             self,
             "UserPoolClientId",
             value=user_pool_client.ref,
-            description="Cognito User Pool Client ID",
+            export_name=f"{self.config.stack_prefix}-client-id",
+            description=f"User Pool Client ID for {self.config.branch}",
         )
 
         CfnOutput(
             self,
             "IdentityPoolId",
             value=identity_pool.ref,
-            description="Cognito Identity Pool ID",
+            export_name=f"{self.config.stack_prefix}-identity-pool-id",
+            description=f"Identity Pool ID for {self.config.branch}",
         )
 
         CfnOutput(
             self,
             "UserPoolDomainName",
             value=user_pool_domain.domain_name,
-            description="Cognito User Pool Domain",
+            export_name=f"{self.config.stack_prefix}-cognito-domain",
+            description=f"Cognito domain for {self.config.branch}",
         )
 
         CfnOutput(
@@ -171,3 +194,22 @@ class AuthStack(Stack):
         self.user_pool_client = user_pool_client
         self.identity_pool = identity_pool
         self.google_oauth_secret = google_oauth_secret
+
+    def _apply_tags(self) -> None:
+        """Apply consistent tags for resource management."""
+        Tags.of(self).add("Environment", self.config.environment)
+        Tags.of(self).add("Branch", self.config.branch)
+        Tags.of(self).add("Project", "sflt")
+        Tags.of(self).add("ManagedBy", "cdk")
+
+        # Add feature branch specific tags for easy cleanup
+        if self.config.environment == "feature":
+            Tags.of(self).add("FeatureBranch", self.config.branch)
+            Tags.of(self).add("AutoCleanup", "true")
+
+    def _get_removal_policy(self) -> RemovalPolicy:
+        """Get appropriate removal policy based on environment."""
+        if self.config.environment in ["feature", "dev"]:
+            return RemovalPolicy.DESTROY
+        else:
+            return RemovalPolicy.RETAIN

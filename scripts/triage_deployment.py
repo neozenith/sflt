@@ -30,9 +30,7 @@ from rich.logging import RichHandler
 
 console = Console()
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+    level=logging.INFO, format="%(message)s", handlers=[RichHandler(console=console, show_path=False, show_time=False)]
 )
 logger = logging.getLogger(__name__)
 
@@ -839,16 +837,17 @@ def generate_status_summary(
     """Generate a human-readable status summary."""
     issues = []
     warnings = []
-    
+
     # Check Lambda@Edge propagation time
     lambda_modified_time = lambda_status.get("LastModified")
     if lambda_modified_time:
         from dateutil import parser
+
         try:
             modified_dt = parser.parse(lambda_modified_time)
             current_dt = datetime.now(modified_dt.tzinfo)
             minutes_since_deploy = (current_dt - modified_dt).total_seconds() / 60
-            
+
             if minutes_since_deploy < 30:
                 warnings.append(
                     f"Lambda@Edge was modified {minutes_since_deploy:.1f} minutes ago. "
@@ -1100,7 +1099,9 @@ def main():
                 if "Lambda@Edge was modified" in warning and "propagation takes" in warning:
                     # Highlight Lambda@Edge propagation warnings prominently
                     console.print(f"  ⏱️  [bold yellow]{warning}[/bold yellow]")
-                    console.print("     [dim]💡 Tip: Lambda@Edge updates replicate globally - wait before troubleshooting[/dim]")
+                    console.print(
+                        "     [dim]💡 Tip: Lambda@Edge updates replicate globally - wait before troubleshooting[/dim]"
+                    )
                 else:
                     console.print(f"  • {warning}")
 

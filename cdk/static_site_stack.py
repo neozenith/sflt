@@ -3,8 +3,10 @@ import os
 from aws_cdk import (
     CfnOutput,
     Duration,
+    Fn,
     RemovalPolicy,
     Stack,
+    Tags,
 )
 from aws_cdk import (
     aws_cloudfront as cloudfront,
@@ -26,21 +28,32 @@ from aws_cdk import (
 )
 from constructs import Construct
 
+from .auth_stack import AuthStack
+from .config import DeploymentConfig
+
 
 class StaticSiteStack(Stack):
-    def __init__(self, scope: Construct, construct_id: str, **kwargs) -> None:
+    def __init__(
+        self, scope: Construct, construct_id: str, config: DeploymentConfig, auth_stack: AuthStack, **kwargs
+    ) -> None:
         super().__init__(scope, construct_id, **kwargs)
+
+        self.config = config
+        self.auth_stack = auth_stack
+
+        # Apply consistent tagging
+        self._apply_tags()
 
         # Create Lambda@Edge function for route protection
         # This stack MUST be deployed in us-east-1 for Lambda@Edge
         auth_lambda = lambda_.Function(
             self,
             "AuthLambda",
-            function_name="SfltAuthLambdaEdgeV6",  # New version to avoid conflicts
+            function_name=f"{self.config.resource_prefix}-auth-edge",
             runtime=lambda_.Runtime.PYTHON_3_11,
             handler="auth_handler.handler",
             code=lambda_.Code.from_asset(os.path.join(os.path.dirname(__file__), "lambda-edge")),
-            description="Lambda@Edge function for protecting routes",
+            description=f"Lambda@Edge for {self.config.branch} auth",
             timeout=Duration.seconds(5),
             memory_size=128,
         )
@@ -76,12 +89,13 @@ class StaticSiteStack(Stack):
         website_bucket = s3.Bucket(
             self,
             "WebsiteBucket",
+            bucket_name=f"{self.config.resource_prefix}-website-{self.account}",
             block_public_access=s3.BlockPublicAccess.BLOCK_ALL,
             encryption=s3.BucketEncryption.S3_MANAGED,
             enforce_ssl=True,
             versioned=True,
-            removal_policy=RemovalPolicy.DESTROY,
-            auto_delete_objects=True,
+            removal_policy=self._get_removal_policy(),
+            auto_delete_objects=self.config.environment in ["feature", "dev"],
         )
 
         # Create Origin Access Control for CloudFront
@@ -89,11 +103,11 @@ class StaticSiteStack(Stack):
             self,
             "OAC",
             origin_access_control_config=cloudfront.CfnOriginAccessControl.OriginAccessControlConfigProperty(
-                name="SfltOAC",
+                name=f"{self.config.resource_prefix}-oac",
                 origin_access_control_origin_type="s3",
                 signing_behavior="always",
                 signing_protocol="sigv4",
-                description="OAC for static website",
+                description=f"OAC for {self.config.branch} static website",
             ),
         )
 
@@ -104,6 +118,11 @@ class StaticSiteStack(Stack):
                 function_version=auth_lambda_version,
             )
         ]
+
+        # Import auth stack values using cross-region references
+        user_pool_id = Fn.import_value(f"{self.config.stack_prefix}-user-pool-id")
+        client_id = Fn.import_value(f"{self.config.stack_prefix}-client-id")
+        cognito_domain = Fn.import_value(f"{self.config.stack_prefix}-cognito-domain")
 
         # Create CloudFront distribution
         distribution = cloudfront.Distribution(
@@ -134,6 +153,7 @@ class StaticSiteStack(Stack):
             price_class=cloudfront.PriceClass.PRICE_CLASS_100,
             enabled=True,
             http_version=cloudfront.HttpVersion.HTTP2_AND_3,
+            comment=f"Distribution for {self.config.branch} branch",
         )
 
         # Deploy website content to S3
@@ -167,7 +187,8 @@ class StaticSiteStack(Stack):
             self,
             "DistributionDomainName",
             value=distribution.distribution_domain_name,
-            description="CloudFront distribution domain name",
+            export_name=f"{self.config.stack_prefix}-distribution-domain",
+            description=f"CloudFront domain for {self.config.branch}",
         )
 
         CfnOutput(
@@ -188,5 +209,24 @@ class StaticSiteStack(Stack):
             self,
             "BucketName",
             value=website_bucket.bucket_name,
-            description="S3 bucket name",
+            export_name=f"{self.config.stack_prefix}-bucket-name",
+            description=f"S3 bucket for {self.config.branch}",
         )
+
+    def _apply_tags(self) -> None:
+        """Apply consistent tags for resource management."""
+        Tags.of(self).add("Environment", self.config.environment)
+        Tags.of(self).add("Branch", self.config.branch)
+        Tags.of(self).add("Project", "sflt")
+        Tags.of(self).add("ManagedBy", "cdk")
+
+        if self.config.environment == "feature":
+            Tags.of(self).add("FeatureBranch", self.config.branch)
+            Tags.of(self).add("AutoCleanup", "true")
+
+    def _get_removal_policy(self) -> RemovalPolicy:
+        """Get appropriate removal policy based on environment."""
+        if self.config.environment in ["feature", "dev"]:
+            return RemovalPolicy.DESTROY
+        else:
+            return RemovalPolicy.RETAIN

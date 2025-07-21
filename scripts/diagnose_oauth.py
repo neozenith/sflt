@@ -26,9 +26,7 @@ load_dotenv()
 
 console = Console()
 logging.basicConfig(
-    level=logging.INFO,
-    format="%(message)s",
-    handlers=[RichHandler(console=console, show_path=False, show_time=False)]
+    level=logging.INFO, format="%(message)s", handlers=[RichHandler(console=console, show_path=False, show_time=False)]
 )
 logger = logging.getLogger(__name__)
 
@@ -210,11 +208,11 @@ def diagnose_cognito_settings(cognito_config: dict[str, Any]):
 
     # Check token validity
     console.print("\n[bold]Token Configuration:[/bold]")
-    access_validity = cognito_config.get('AccessTokenValidity', 60)
+    access_validity = cognito_config.get("AccessTokenValidity", 60)
     console.print(f"  [cyan]Access Token Validity:[/cyan] [yellow]{access_validity}[/yellow] minutes")
-    id_validity = cognito_config.get('IdTokenValidity', 60)
+    id_validity = cognito_config.get("IdTokenValidity", 60)
     console.print(f"  [cyan]ID Token Validity:[/cyan] [yellow]{id_validity}[/yellow] minutes")
-    refresh_validity = cognito_config.get('RefreshTokenValidity', 30)
+    refresh_validity = cognito_config.get("RefreshTokenValidity", 30)
     console.print(f"  [cyan]Refresh Token Validity:[/cyan] [yellow]{refresh_validity}[/yellow] days")
 
 
