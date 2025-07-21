@@ -8,6 +8,7 @@ dependencies = [
     "aws-cdk-lib>=2.0.0",
     "constructs>=10.4.2",
     "python-dotenv>=1.1.1",
+    "superclaude>=3.0.0.1",
 ]
 
 [dependency-groups]

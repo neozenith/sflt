@@ -30,6 +30,12 @@ setup-claude-mcp:
 	claude mcp add playwright npx @playwright/mcp@latest
 	claude mcp add context7 -- npx -y @upstash/context7-mcp
 	claude mcp add aws-nx-mcp -- npx -y -p @aws/nx-plugin aws-nx-mcp
+	claude mcp add sequential-thinking -- npx @modelcontextprotocol/server-sequential-thinking
+	claude mcp add magicui -- npx @21st/mcp
+
+setup-super-claude:
+	uv add SuperClaude
+	uv run SuperClaude install --profile developer -y
 
 install:
 	uv sync
